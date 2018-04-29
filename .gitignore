@@ -1,0 +1,6 @@
+build
+.idea
+*.cbp
+*.o
+*.a
+*.so
