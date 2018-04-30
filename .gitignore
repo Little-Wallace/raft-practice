@@ -4,3 +4,5 @@ build
 *.o
 *.a
 *.so
+*.pb.h
+*.pb.cc
