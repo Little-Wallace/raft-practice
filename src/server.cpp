@@ -5,6 +5,7 @@
 #include <grpc++/server_builder.h>
 #include "node_server_service_impl.h"
 #include "util/string_util.h"
+#include "raft_log.h"
 
 using namespace std;
 using namespace Node;
@@ -14,6 +15,16 @@ using grpc::ServerBuilder;
 DEFINE_string(address, "127.0.0.1:8000", "the server address");
 DEFINE_string(cluster, "127.0.0.1:8000", "the server clusters");
 
+RaftStateMachine::RaftMessageQue receiveQue;
+RaftStateMachine::RaftMessageQue sendQue;
+
+RaftStateMachine<RaftLog>* CreateRaftStateMachine(const string&address,
+        const vector<string>& cluster, RaftStateMachine::RaftMessageQue* que)
+{
+    assert(false);
+    return NULL;
+}
+
 int main(int argc, char** argv) {
     vector<std::string> clusters;
     if (!StringUtil::Split(FLAGS_cluster, clusters, ';'))
@@ -21,7 +32,9 @@ int main(int argc, char** argv) {
         std::cout << "clusters is invalid" << std::endl;
         return 0;
     }
-    NodeServerServiceImpl service(FLAGS_address, clusters);
+    RaftStateMachine<RaftLog>* raft = CreateRaftStateMachine(FLAGS_address, FLAGS_cluster,
+            &receiveQue);
+    NodeServerServiceImpl<RaftLog> service(raft, receiveQue);
     ServerBuilder builder;
     builder.AddListeningPort(FLAGS_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);

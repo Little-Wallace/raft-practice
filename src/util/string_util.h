@@ -10,7 +10,7 @@
 class StringUtil {
 public:
     static bool Split(const std::string& content, std::vector<std::string>& result,
-                    const char& splim);
+                      const char& splim);
 };
 
 
