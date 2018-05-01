@@ -13,24 +13,20 @@
 template<typename T>
 class RaftStateMachine
 {
-    typedef T RaftLog;
-    typedef ArrayLockFreeQueue<Node::RaftMessage, 100> RaftMessageQue;
 public:
-    RaftStateMachine(RaftMessageQue* receiveQueue, RaftLog* log,
+    typedef T RaftLog;
+    RaftStateMachine(RaftLog* log,
                      const std::vector<RaftNode>& nodes)
-        : _receiveQueue(receiveQueue)
-        , _log(log)
+        : _log(log)
         , _nodes(nodes)
     {}
     ~RaftStateMachine() {}
-    bool Start() {
+    bool Step(const ::Node::RaftMessage& response) {
         assert(false);
+        return false;
     }
-    bool Step() {
-        assert(false);
-    }
+
 private:
-    RaftMessageQue* _receiveQueue;
     RaftLog* _log;
     std::vector<RaftNode> _nodes;
     

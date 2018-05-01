@@ -10,14 +10,14 @@
 #include <vector>
 #include <iostream>
 
-#include "proto/message.grpc.pb.h"
+#include "message.grpc.pb.h"
 #include "raft_state_machine.h"
 #include "util/array_lock_free_queue.h"
 
+typedef ArrayLockFreeQueue<Node::RaftMessage, 100> RaftMessageQue;
 template<typename T>
 class NodeServerServiceImpl final : public Node::NodeServer::Service {
 public:
-    typedef RaftStateMachine<T>::RaftMessageQue RaftMessageQue; 
     NodeServerServiceImpl(
             RaftStateMachine<T>* raft,
             RaftMessageQue* receiveQueue)
@@ -25,7 +25,24 @@ public:
         , _receiveQueue(receiveQueue)
     {}
     ~NodeServerServiceImpl() {}
-
+    ::grpc::Status Raft(::grpc::ServerContext* context,
+                        const ::Node::RaftMessage* request, ::Node::Done* response) override
+    {
+        assert(false);
+        return grpc::Status::OK;
+    }
+    ::grpc::Status Get(::grpc::ServerContext* context,
+                       const ::Node::PutRequest* request, ::Node::Done* response) override
+    {
+        assert(false);
+        return grpc::Status::OK;
+    }
+    ::grpc::Status Add(::grpc::ServerContext* context,
+                       const ::Node::PutRequest* request, ::Node::Done* response) override
+    {
+        assert(false);
+        return grpc::Status::OK;
+    }
 
 private:
     RaftStateMachine<T>* _raft;

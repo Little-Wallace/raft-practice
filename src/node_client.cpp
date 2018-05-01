@@ -8,21 +8,40 @@
 
 using namespace Node;
 using namespace std;
+using namespace grpc;
 
 bool NodeClient::Init(const std::string& address)
 {
+    _timespec.tv_sec = 2;//设置阻塞时间为2秒
+    _timespec.tv_nsec = 0;
+    _timespec.clock_type = GPR_TIMESPAN;
     _stub = NodeServer::NewStub(grpc::CreateChannel(address,
                                                     grpc::InsecureChannelCredentials()));
     return _stub ? true: false;
 }
 
-bool NodeClient::AddLog(const std::string& content)
+bool NodeClient::Add(const std::string& content)
 {
-
     grpc::ClientContext context;
+    context.set_deadline(_timespec);
     Node::Done done;
     PutRequest request;
     request.set_content(content);
-    auto ret = _stub->AddLog(&context, request, &done);
+    auto ret = _stub->Add(&context, request, &done);
     return ret.ok();
+}
+
+NodeClient::ResStatus NodeClient::Send(const Node::RaftMessage& message)
+{
+    grpc::ClientContext context;
+    context.set_deadline(_timespec);
+    Node::Done done;
+    auto ret = _stub->Raft(&context, message, &done);
+    if (ret.ok()) {
+        return OK;
+    } else if (ret.error_code() == grpc::DEADLINE_EXCEEDED) {
+        return TIMEOUT;
+    } else {
+        return ERROR;
+    }
 }

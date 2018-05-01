@@ -15,11 +15,12 @@ using grpc::ServerBuilder;
 DEFINE_string(address, "127.0.0.1:8000", "the server address");
 DEFINE_string(cluster, "127.0.0.1:8000", "the server clusters");
 
-RaftStateMachine::RaftMessageQue receiveQue;
-RaftStateMachine::RaftMessageQue sendQue;
+RaftMessageQue receiveQue;
+RaftMessageQue sendQue;
+
 
 RaftStateMachine<RaftLog>* CreateRaftStateMachine(const string&address,
-        const vector<string>& cluster, RaftStateMachine::RaftMessageQue* que)
+        const vector<string>& cluster, RaftMessageQue* que)
 {
     assert(false);
     return NULL;
@@ -32,9 +33,9 @@ int main(int argc, char** argv) {
         std::cout << "clusters is invalid" << std::endl;
         return 0;
     }
-    RaftStateMachine<RaftLog>* raft = CreateRaftStateMachine(FLAGS_address, FLAGS_cluster,
+    RaftStateMachine<RaftLog>* raft = CreateRaftStateMachine(FLAGS_address, clusters,
             &receiveQue);
-    NodeServerServiceImpl<RaftLog> service(raft, receiveQue);
+    NodeServerServiceImpl<RaftLog> service(raft, &receiveQue);
     ServerBuilder builder;
     builder.AddListeningPort(FLAGS_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);

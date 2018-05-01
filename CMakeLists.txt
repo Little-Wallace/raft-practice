@@ -11,7 +11,8 @@ link_libraries(protobuf)
 link_libraries(grpc++)
 link_libraries(gflags)
 set(SOURCES
-        src/raft_node.cpp src/node_server_service_impl.cpp
+        src/raft_node.cpp
+        src/raft_log.cpp
         src/node_client.cpp src/util/string_util.cpp
         proto/message.grpc.pb.cc proto/message.pb.cc)
 add_library(raftlib STATIC ${SOURCES})

@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     }
     string content;
     while (cin >> content) {
-        bool ret = client.AddLog(content);
+        bool ret = client.Add(content);
         if (ret) {
             cout << "send success!" << endl;
         } else {
