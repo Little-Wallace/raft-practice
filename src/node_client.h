@@ -22,9 +22,9 @@ public:
     ~NodeClient() {}
     bool Init(const std::string& address);
     bool Add(const std::string& content);
-    ResStatus Send(const Node::RaftMessage& message);
+    ResStatus Send(const Raft::RaftMessage& message);
 private:
-    std::unique_ptr<Node::NodeServer::Stub> _stub;
+    std::unique_ptr<Raft::NodeServer::Stub> _stub;
     gpr_timespec _timespec;
 
 };

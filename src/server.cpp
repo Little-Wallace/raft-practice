@@ -8,7 +8,7 @@
 #include "raft_log.h"
 
 using namespace std;
-using namespace Node;
+using namespace Raft;
 using grpc::Server;
 using grpc::ServerBuilder;
 

@@ -6,7 +6,7 @@
 #include <grpc++/grpc++.h>
 #include <grpc/grpc.h>
 
-using namespace Node;
+using namespace Raft;
 using namespace std;
 using namespace grpc;
 
@@ -24,18 +24,18 @@ bool NodeClient::Add(const std::string& content)
 {
     grpc::ClientContext context;
     context.set_deadline(_timespec);
-    Node::Done done;
+    Done done;
     PutRequest request;
     request.set_content(content);
     auto ret = _stub->Add(&context, request, &done);
     return ret.ok();
 }
 
-NodeClient::ResStatus NodeClient::Send(const Node::RaftMessage& message)
+NodeClient::ResStatus NodeClient::Send(const Raft::RaftMessage& message)
 {
     grpc::ClientContext context;
     context.set_deadline(_timespec);
-    Node::Done done;
+    Done done;
     auto ret = _stub->Raft(&context, message, &done);
     if (ret.ok()) {
         return OK;

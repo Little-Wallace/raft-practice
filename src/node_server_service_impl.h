@@ -14,38 +14,38 @@
 #include "raft_state_machine.h"
 #include "util/array_lock_free_queue.h"
 
-typedef ArrayLockFreeQueue<Node::RaftMessage, 100> RaftMessageQue;
+typedef ArrayLockFreeQueue<Raft::RaftMessage, 100> RaftMessageQue;
 template<typename T>
-class NodeServerServiceImpl final : public Node::NodeServer::Service {
+class NodeServerServiceImpl final : public Raft::NodeServer::Service {
 public:
     NodeServerServiceImpl(
-            RaftStateMachine<T>* raft,
+            Raft::RaftStateMachine<T>* raft,
             RaftMessageQue* receiveQueue)
         : _raft(raft)
         , _receiveQueue(receiveQueue)
     {}
     ~NodeServerServiceImpl() {}
     ::grpc::Status Raft(::grpc::ServerContext* context,
-                        const ::Node::RaftMessage* request, ::Node::Done* response) override
+                        const ::Raft::RaftMessage* request, ::Raft::Done* response) override
     {
         assert(false);
         return grpc::Status::OK;
     }
     ::grpc::Status Get(::grpc::ServerContext* context,
-                       const ::Node::PutRequest* request, ::Node::Done* response) override
+                       const ::Raft::PutRequest* request, ::Raft::Done* response) override
     {
         assert(false);
         return grpc::Status::OK;
     }
     ::grpc::Status Add(::grpc::ServerContext* context,
-                       const ::Node::PutRequest* request, ::Node::Done* response) override
+                       const ::Raft::PutRequest* request, ::Raft::Done* response) override
     {
         assert(false);
         return grpc::Status::OK;
     }
 
 private:
-    RaftStateMachine<T>* _raft;
+    Raft::RaftStateMachine<T>* _raft;
     RaftMessageQue* _receiveQueue;
 };
 
