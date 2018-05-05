@@ -2,8 +2,8 @@
 // Created by liuwei on 4/23/18.
 //
 
-#ifndef RAFT_RAWNODE_H
-#define RAFT_RAWNODE_H
+#ifndef RAFT_NODE_SERVER_H
+#define RAFT_NODE_SERVER_H
 
 #include <string>
 #include <thread>
@@ -11,20 +11,22 @@
 #include <iostream>
 
 #include "message.grpc.pb.h"
-#include "raft_state_machine.h"
 #include "util/array_lock_free_queue.h"
 
-typedef ArrayLockFreeQueue<Raft::RaftMessage, 100> RaftMessageQue;
-template<typename T>
+namespace Raft
+{
+class RaftStateMachine;
+};
+
+typedef ::ArrayLockFreeQueue<Raft::RaftMessage, 100> RaftMessageQueue;
+
 class NodeServerServiceImpl final : public Raft::NodeServer::Service {
 public:
     NodeServerServiceImpl(
-            Raft::RaftStateMachine<T>* raft,
-            RaftMessageQue* receiveQueue)
-        : _raft(raft)
-        , _receiveQueue(receiveQueue)
-    {}
-    ~NodeServerServiceImpl() {}
+            Raft::RaftStateMachine* raft,
+            RaftMessageQueue* receiveQueue);
+
+    ~NodeServerServiceImpl();
     ::grpc::Status Raft(::grpc::ServerContext* context,
                         const ::Raft::RaftMessage* request, ::Raft::Done* response) override
     {
@@ -45,8 +47,8 @@ public:
     }
 
 private:
-    Raft::RaftStateMachine<T>* _raft;
-    RaftMessageQue* _receiveQueue;
+    Raft::RaftStateMachine* _raft;
+    RaftMessageQueue* _receiveQueue;
 };
 
-#endif //RAFT_RAWNODE_H
+#endif //RAFT_NODE_SERVER_H

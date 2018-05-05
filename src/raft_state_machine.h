@@ -6,23 +6,11 @@
 #define RAFT_STATE_MACHINE_H
 #include "common.h"
 #include "raft_node.h"
+#include "raft_log.h"
 #include "util/array_lock_free_queue.h"
-
 #include <random>
 
 namespace Raft{
-
-RaftMessage* NewRaftMessage(MessageType msg_type,
-                           uint64_t to,
-                           uint64_t from)
-{
-    RaftMessage* msg = new RaftMessage();
-    msg->set_term(0);
-    msg->set_msg_type(msg_type);
-    msg->set_to(to);
-    msg->set_from(from);
-    return msg;
-}
 
 // RaftMessage NewRaftMessage(MessageType msg_type,
 //                            uint64_t to,
@@ -36,7 +24,6 @@ RaftMessage* NewRaftMessage(MessageType msg_type,
 //     return msg;    
 // }
 
-template<typename T>
 class RaftStateMachine
 {
 public:
@@ -47,12 +34,11 @@ public:
         Leader,
         PreCandidate
     };
-    typedef T RaftLog;
     RaftStateMachine(uint64_t id_,
                      RaftLog* log,
-                     const std::vector<RaftNode>& nodes);
+                     const std::vector<RaftNode*>& nodes);
     
-    ~RaftStateMachine() {}
+    ~RaftStateMachine();
     bool Step(const ::Raft::RaftMessage& msg);
     void Reset(uint64_t term);
     void ResetRandomizedElectionTimeout() {
@@ -62,9 +48,42 @@ public:
         _randomized_election_timeout = timeout;
     }
     void BecomeFollower(uint64_t term, uint64_t id);
-
     bool GetSendMessages(std::vector<RaftMessage>& to_send_msgs);
+    uint32_t Poll(uint64_t id_, MessageType type, bool agree);
+    void Tick()
+    {
+        assert(false);
+    }
+
+    bool HasReady()
+    {
+        assert(false);
+        return false;
+    }
     
+    static RaftMessage* CreateRaftMessage(MessageType msg_type,
+            uint64_t term,
+            uint64_t to)
+    {
+        RaftMessage* msg = new RaftMessage();
+        msg->set_term(term);
+        msg->set_msg_type(msg_type);
+        msg->set_to(to);
+        return msg;
+    }
+private:
+    void Send(RaftMessage& msg);
+    void MaybeCompaign();
+    uint32_t Quorum();
+    void DoCompaign();
+    void DoVote(const RaftMessage& msg);
+    void StepLeader(const RaftMessage& msg);
+    void StepFollower(const RaftMessage& msg);
+    void StepCandidate(const RaftMessage& msg);
+    void BecomeCandidate();
+    void BecomeLeader();
+    void BecomePreCandidate();
+    void LaunchVote(MessageType type);
 private:
     uint64_t _id;
     uint64_t _leader_id;
@@ -76,39 +95,30 @@ private:
     uint64_t _heartbeat_timeout;
     uint64_t _randomized_election_timeout;
     RoleState _state;
-    std::vector<RaftMessage> _msgs;
     RaftLog* _log;
-    std::vector<RaftNode> _nodes;
+    std::vector<RaftNode*> _nodes;
+    std::vector<bool> _votes;
     std::vector<RaftMessage> _to_send_msgs;
+    // todo: use allocator to avoid allocate memory for messages frequently
+    // Allocator<RaftMessage> _allocator;
 };
 
-template<typename T>
-RaftStateMachine<T>::RaftStateMachine(uint64_t id_,
-                                      RaftLog* log,
-                                      const std::vector<RaftNode>& nodes)
-    : _id(id_)
-    , _leader_id(0)
-    , _vote(0)
-    , _term(0)
-    , _election_elapsed(0)
-    , _heartbeat_elapsed(0)
-    , _election_timeout(DEFAULT_ELECTION_TIMEOUT)
-    , _heartbeat_timeout(DEFAULT_HEARTBEAT_TIMEOUT)
-    , _log(log)
-    , _nodes(nodes) {
+inline uint32_t RaftStateMachine::Quorum()
+{
+    return _nodes.size() / 2 + 1;
 }
 
-template<typename T>
-void RaftStateMachine<T>::BecomeFollower(uint64_t term, uint64_t id)
-{
-    Reset(term);
-    _leader_id = id;
-    _state = Follower; 
+// todo: use message type for log
+inline uint32_t RaftStateMachine::Poll(uint64_t id_, MessageType type, bool agree) {
+    _votes[id_ - 1] = true;
+    uint32_t vote_result = 0;
+    for (size_t i = 0; i < _votes.size(); i ++) {
+        if (_votes[i]) vote_result ++;
+    }
+    return vote_result;
 }
 
-template<typename T>
-void RaftStateMachine<T>::Reset(uint64_t term)
-{
+inline void RaftStateMachine::Reset(uint64_t term) {
     if (_term != term) {
         _term = term;
         _vote = INVALID_ID;
@@ -117,59 +127,9 @@ void RaftStateMachine<T>::Reset(uint64_t term)
     ResetRandomizedElectionTimeout();
     _election_elapsed = 0;
     _heartbeat_elapsed = 0;
-    
-    // _abort_leader_transfer();
-    
-    // _votes = FxHashMap::default();
-    
-    //_pending_conf_index = 0;
-    //_read_only = ReadOnly::new(_read_only.option);
-
-    // let (last_index, max_inflight) = (_log.last_index(), _max_inflight);
-    // let self_id = _id;
-    // for (size_t i = 0; i < _nodes.size(); i ++)
-    // {
-        
-    // }
-    // for (&id, pr) in _mut_prs().iter_mut() {
-    //         let is_learner = pr.is_learner;
-    //         *pr = new_progress(last_index + 1, max_inflight);
-    //         pr.is_learner = is_learner;
-    //         if id == self_id {
-    //             pr.matched = last_index;
-    //         }
-    //     }
-    // }
 }
 
-template<typename T>
-bool RaftStateMachine<T>::Step(const RaftMessage& msg) {
-    if (msg.term() == 0) {
-        // local message
-    } else if (msg.term() > _term) {
-        // remote new message
-        assert(false);
-    } else if (msg.term() < _term) {
-        // remote old message, maybe compaign again.
-        assert(false);
-    }
-    MessageType msg_type = msg.msg_type();
-    switch (msg_type) {
-    case MsgHup:
-        // regular tick to drive raft
-        assert(false);
-        break;
-    case MsgRequestPreVote:
-    case MsgRequestVote:
-        // compaign
-        assert(false);
-        break;
-    default:
-        assert(false);
-        break;
-    }
-}
 
-}
+};
 #endif
 

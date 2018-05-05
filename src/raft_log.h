@@ -2,14 +2,16 @@
 // Created by liuwei on 5/1/18.
 //
 
-#ifndef RAFT_RAFT_LOG_H
-#define RAFT_RAFT_LOG_H
-
+#ifndef RAFT_LOG_H
+#define RAFT_LOG_H
+#include "common.h"
 
 class RaftLog {
 public:
     RaftLog();
-    ~RaftLog();
+    virtual ~RaftLog();
+    virtual uint64_t GetLastIndex() const = 0;
+    virtual uint64_t GetLastTerm() const = 0;
 };
 
 

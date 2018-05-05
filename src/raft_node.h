@@ -13,6 +13,9 @@ public:
     RaftNode(size_t id_, const std::string& address);
     ~RaftNode() {}
     bool Init();
+    uint64_t GetId() {
+        return (uint64_t)_id;
+    }
 private:
     size_t _id;
     std::string _address;

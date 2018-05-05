@@ -4,9 +4,12 @@
 #include <grpc++/server.h>
 #include <grpc++/server_builder.h>
 #include "node_server_service_impl.h"
+#include "service_keeper.h"
+#include "raft_state_machine.h"
 #include "util/string_util.h"
+#include "util/array_lock_free_queue.h"
 #include "raft_log.h"
-
+using grpc::ServerCompletionQueue;
 using namespace std;
 using namespace Raft;
 using grpc::Server;
@@ -15,12 +18,12 @@ using grpc::ServerBuilder;
 DEFINE_string(address, "127.0.0.1:8000", "the server address");
 DEFINE_string(cluster, "127.0.0.1:8000", "the server clusters");
 
-RaftMessageQue receiveQue;
-RaftMessageQue sendQue;
+RaftMessageQueue receiveQue;
+RaftMessageQueue sendQue;
 
 
-RaftStateMachine<RaftLog>* CreateRaftStateMachine(const string&address,
-        const vector<string>& cluster, RaftMessageQue* que)
+RaftStateMachine* CreateRaftStateMachine(const string&address,
+        const vector<string>& cluster, RaftMessageQueue* que)
 {
     assert(false);
     return NULL;
@@ -33,9 +36,15 @@ int main(int argc, char** argv) {
         std::cout << "clusters is invalid" << std::endl;
         return 0;
     }
-    RaftStateMachine<RaftLog>* raft = CreateRaftStateMachine(FLAGS_address, clusters,
+    RaftStateMachine* raft = CreateRaftStateMachine(FLAGS_address, clusters,
             &receiveQue);
-    NodeServerServiceImpl<RaftLog> service(raft, &receiveQue);
+    ServiceKeeper keeper(raft, &receiveQue);
+    NodeServerServiceImpl service(raft, &receiveQue);
+    if (!keeper.Start(1000000))
+    {
+        std::cout << "start service failed" << std::endl;
+        return 0;
+    }
     ServerBuilder builder;
     builder.AddListeningPort(FLAGS_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
