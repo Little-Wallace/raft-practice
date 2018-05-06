@@ -84,7 +84,7 @@ private:
     void BecomeLeader();
     void BecomePreCandidate();
     void LaunchVote(MessageType type);
-private:
+private :
     uint64_t _id;
     uint64_t _leader_id;
     uint64_t _vote;
@@ -101,6 +101,8 @@ private:
     std::vector<RaftMessage> _to_send_msgs;
     // todo: use allocator to avoid allocate memory for messages frequently
     // Allocator<RaftMessage> _allocator;
+
+    friend class RaftTest_TestCampaign_Test;
 };
 
 inline uint32_t RaftStateMachine::Quorum()

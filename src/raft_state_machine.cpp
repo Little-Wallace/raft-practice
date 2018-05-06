@@ -1,4 +1,5 @@
 #include "raft_state_machine.h"
+#include <cassert>
 using namespace std;
 
 namespace Raft{
@@ -76,6 +77,7 @@ bool RaftStateMachine::Step(const RaftMessage& msg) {
         }        
         break;
     }
+    return true;
 }
 
 void RaftStateMachine::DoCompaign() {
@@ -87,7 +89,6 @@ void RaftStateMachine::DoCompaign() {
     }
     LaunchVote(MsgRequestVote);
 }
-
 
 void RaftStateMachine::MaybeCompaign() {
     // todo: judge if there is a entry of config change

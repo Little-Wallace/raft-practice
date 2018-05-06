@@ -6,12 +6,16 @@
 #define RAFT_LOG_H
 #include "common.h"
 
+namespace Raft{
+
 class RaftLog {
 public:
-    RaftLog();
-    virtual ~RaftLog();
+    RaftLog() {}
+    virtual ~RaftLog() {}
     virtual uint64_t GetLastIndex() const = 0;
     virtual uint64_t GetLastTerm() const = 0;
+};
+
 };
 
 
