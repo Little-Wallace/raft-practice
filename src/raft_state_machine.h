@@ -4,14 +4,13 @@
 
 #ifndef RAFT_STATE_MACHINE_H
 #define RAFT_STATE_MACHINE_H
-#include "common.h"
 #include "raft_node.h"
 #include "raft_log.h"
 #include "util/array_lock_free_queue.h"
 #include <random>
+#include "common.h"
 
 namespace Raft{
-
 // RaftMessage NewRaftMessage(MessageType msg_type,
 //                            uint64_t to,
 //                            uint64_t from)
@@ -79,11 +78,17 @@ private:
     void DoVote(const RaftMessage& msg);
     void StepLeader(const RaftMessage& msg);
     void StepFollower(const RaftMessage& msg);
-    void StepCandidate(const RaftMessage& msg);
+    bool StepCandidate(const RaftMessage& msg);
     void BecomeCandidate();
     void BecomeLeader();
     void BecomePreCandidate();
     void LaunchVote(MessageType type);
+    void AppendEntry(std::vector<Entry>& entries) {
+        assert(false);
+    }
+    void BroadCast() {
+        assert(false);
+    }
 private :
     uint64_t _id;
     uint64_t _leader_id;
@@ -97,7 +102,7 @@ private :
     RoleState _state;
     RaftLog* _log;
     std::vector<RaftNode*> _nodes;
-    std::vector<bool> _votes;
+    std::map<uint64_t, bool> _votes;
     std::vector<RaftMessage> _to_send_msgs;
     // todo: use allocator to avoid allocate memory for messages frequently
     // Allocator<RaftMessage> _allocator;
@@ -112,10 +117,10 @@ inline uint32_t RaftStateMachine::Quorum()
 
 // todo: use message type for log
 inline uint32_t RaftStateMachine::Poll(uint64_t id_, MessageType type, bool agree) {
-    _votes[id_ - 1] = true;
+    _votes[id_] = agree;
     uint32_t vote_result = 0;
-    for (size_t i = 0; i < _votes.size(); i ++) {
-        if (_votes[i]) vote_result ++;
+    for (auto iter: _votes) {
+        if (iter.second) vote_result ++;
     }
     return vote_result;
 }
@@ -129,6 +134,8 @@ inline void RaftStateMachine::Reset(uint64_t term) {
     ResetRandomizedElectionTimeout();
     _election_elapsed = 0;
     _heartbeat_elapsed = 0;
+    _votes.clear();
+    // reset nodes
 }
 
 

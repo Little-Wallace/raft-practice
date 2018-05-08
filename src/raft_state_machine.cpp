@@ -1,5 +1,5 @@
 #include "raft_state_machine.h"
-#include <cassert>
+#include <exception>
 using namespace std;
 
 namespace Raft{
@@ -17,7 +17,6 @@ RaftStateMachine::RaftStateMachine(uint64_t id_,
     , _heartbeat_timeout(DEFAULT_HEARTBEAT_TIMEOUT)
     , _log(log)
     , _nodes(nodes) {
-    _votes.resize(nodes.size(), false);
 }
 
 RaftStateMachine::~RaftStateMachine() {
@@ -45,16 +44,39 @@ void RaftStateMachine::Send(RaftMessage& msg) {
 }
 
 bool RaftStateMachine::Step(const RaftMessage& msg) {
+    MessageType msg_type = msg.msg_type();
     if (msg.term() == 0) {
         // local message
     } else if (msg.term() > _term) {
-        // remote new message
-        assert(false);
+        if (MsgRequestVote == msg_type || MsgRequestPreVote == msg_type) {
+            bool force = msg.context() == CAMPAIGN_TRANSFER;
+            bool in_lease = _leader_id != INVALID_ID && _election_elapsed < _election_timeout;
+            if (!force && in_lease) {
+                return true;
+            }
+        }
+        if ((MsgRequestPreVoteResponse == msg_type && !msg.reject())
+            || MsgRequestPreVote == msg_type) {
+            // prevote
+        } else {
+            // receive a higher term, should be follower
+            if (MsgAppend == msg_type ||
+                    MsgHeartbeat == msg_type ||
+                    MsgSnapshot == msg_type) {
+                BecomeFollower(msg.term(), msg.from());
+            } else {
+                BecomeFollower(msg.term(), INVALID_ID);
+            }
+        }
     } else if (msg.term() < _term) {
         // remote old message, maybe compaign again.
+        // receive msg from a obsolete leader.
+        if (MsgHeartbeat == msg_type || MsgAppend == msg_type) {
+            RaftMessage* msg = CreateRaftMessage(MsgAppendResponse, 0, 0);
+            Send(*msg);
+        }
         assert(false);
     }
-    MessageType msg_type = msg.msg_type();
     switch (msg_type) {
     case MsgHup:
         // regular tick to drive raft
@@ -74,7 +96,7 @@ bool RaftStateMachine::Step(const RaftMessage& msg) {
             StepLeader(msg);
         } else {
             assert(false);
-        }        
+        }
         break;
     }
     return true;
@@ -104,9 +126,11 @@ void RaftStateMachine::LaunchVote(MessageType type) {
     uint64_t term = (type == MsgRequestPreVote ? (1 + _term) : _term);
     for (size_t i = 0; i < _nodes.size(); i ++)
     {
+        if (_nodes[i]->GetId() == _id) continue;
         auto m = CreateRaftMessage(type, term, _nodes[i]->GetId());
         m->set_index(_log->GetLastIndex());
         m->set_log_term(_log->GetLastTerm());
+
         Send(*m);
     }
 }
@@ -121,8 +145,47 @@ void RaftStateMachine::StepFollower(const RaftMessage& msg) {
     assert(false);
 }
 
-void RaftStateMachine::StepCandidate(const RaftMessage& msg) {
-    assert(false);
+bool RaftStateMachine::StepCandidate(const RaftMessage& msg) {
+
+    switch (msg.msg_type()) {
+        case MsgPropose:
+            return false;
+        case MsgAppend:
+        case MsgHeartbeat:
+        case MsgSnapshot:
+            BecomeFollower(msg.term(), msg.from());
+            // todo: handle msg
+            break;
+        case MsgRequestPreVoteResponse:
+            if (Candidate == _state)
+                return true;
+        case MsgRequestVoteResponse:
+            if (PreCandidate == _state)
+                return true;
+            {
+                auto sz = Poll(msg.from(), msg.msg_type(), !msg.reject());
+                if (Quorum() == sz) {
+                    // win the campaign, become leader immediately
+                    if (PreCandidate == _state) {
+                        DoCompaign();
+                    } else{
+                        BecomeLeader();
+                        BroadCast();
+                    }
+                } else if (_votes.size() == sz + Quorum()) {
+                    // lose the campaign, wait someone to be leader.
+                    BecomeFollower(_term, INVALID_ID);
+                }
+            }
+           break;
+        case MsgTimeoutNow:
+            cerr << "debug time out now, id " << _id << " term: " << _term << " state: " << _state << endl;
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    return true;
 }
 
 void RaftStateMachine::BecomeFollower(uint64_t term, uint64_t id) {
@@ -132,13 +195,21 @@ void RaftStateMachine::BecomeFollower(uint64_t term, uint64_t id) {
 }
 
 void RaftStateMachine::BecomeCandidate() {
-    assert(false);
+    Reset(_term + 1);
+    _vote = _id;
+    _state = Candidate;
 }
 void RaftStateMachine::BecomeLeader() {
-    assert(false);
+    Reset(_term);
+    _leader_id = _id;
+    auto ents = _log->Entries(_log->GetCommitted() + 1, RaftLog::NO_LIMIT);
+    // todo: change conf
+    _state = Leader;
+    vector<Entry> vec;
+    AppendEntry(vec);
 }
 void RaftStateMachine::BecomePreCandidate() {
-    assert(false);
+    _state = PreCandidate;
 }
 
 };
