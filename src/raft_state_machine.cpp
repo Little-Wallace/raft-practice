@@ -130,7 +130,6 @@ void RaftStateMachine::LaunchVote(MessageType type) {
         auto m = CreateRaftMessage(type, term, _nodes[i]->GetId());
         m->set_index(_log->GetLastIndex());
         m->set_log_term(_log->GetLastTerm());
-
         Send(*m);
     }
 }
@@ -146,38 +145,39 @@ void RaftStateMachine::StepFollower(const RaftMessage& msg) {
 }
 
 bool RaftStateMachine::StepCandidate(const RaftMessage& msg) {
-
+    cout << "step candidate: " << msg.msg_type() << " " << MsgRequestPreVoteResponse << endl; 
     switch (msg.msg_type()) {
-        case MsgPropose:
-            return false;
-        case MsgAppend:
-        case MsgHeartbeat:
-        case MsgSnapshot:
-            BecomeFollower(msg.term(), msg.from());
-            // todo: handle msg
-            break;
-        case MsgRequestPreVoteResponse:
-            if (Candidate == _state)
-                return true;
-        case MsgRequestVoteResponse:
-            if (PreCandidate == _state)
-                return true;
-            {
-                auto sz = Poll(msg.from(), msg.msg_type(), !msg.reject());
-                if (Quorum() == sz) {
-                    // win the campaign, become leader immediately
-                    if (PreCandidate == _state) {
-                        DoCompaign();
-                    } else{
-                        BecomeLeader();
-                        BroadCast();
-                    }
-                } else if (_votes.size() == sz + Quorum()) {
-                    // lose the campaign, wait someone to be leader.
-                    BecomeFollower(_term, INVALID_ID);
+    case MsgPropose:
+        return false;
+    case MsgAppend:
+    case MsgHeartbeat:
+    case MsgSnapshot:
+        BecomeFollower(msg.term(), msg.from());
+        assert(false);
+        // todo: handle msg
+        break;
+    case MsgRequestPreVoteResponse:
+    case MsgRequestVoteResponse:
+        cout << "step " << _state << ": " << PreCandidate << endl;
+        if ((MsgRequestPreVoteResponse == msg.msg_type() && PreCandidate != _state)
+            || (MsgRequestVoteResponse == msg.msg_type() && Candidate != _state))
+            return true;
+        {
+            size_t sz = Poll(msg.from(), msg.msg_type(), !msg.reject());
+            if (Quorum() == sz) {
+                // win the campaign, become leader immediately
+                if (PreCandidate == _state) {
+                    DoCompaign();
+                } else{
+                    BecomeLeader();
+                    BroadCast();
                 }
+            } else if (_votes.size() == sz + Quorum()) {
+                // lose the campaign, wait someone to be leader.
+                BecomeFollower(_term, INVALID_ID);
             }
-           break;
+        }
+        break;
         case MsgTimeoutNow:
             cerr << "debug time out now, id " << _id << " term: " << _term << " state: " << _state << endl;
             break;
@@ -210,6 +210,10 @@ void RaftStateMachine::BecomeLeader() {
 }
 void RaftStateMachine::BecomePreCandidate() {
     _state = PreCandidate;
+}
+
+bool RaftStateMachine::GetSendMessages(std::vector<RaftMessage>& to_send_msgs) {
+    to_send_msgs.swap(_to_send_msgs);
 }
 
 };

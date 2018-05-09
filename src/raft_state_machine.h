@@ -29,9 +29,9 @@ public:
     enum RoleState
     {
         Follower,
+        PreCandidate,
         Candidate,
-        Leader,
-        PreCandidate
+        Leader
     };
     RaftStateMachine(uint64_t id_,
                      RaftLog* log,
@@ -106,7 +106,6 @@ private :
     std::vector<RaftMessage> _to_send_msgs;
     // todo: use allocator to avoid allocate memory for messages frequently
     // Allocator<RaftMessage> _allocator;
-
     friend class RaftTest_TestCampaign_Test;
 };
 
