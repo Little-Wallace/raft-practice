@@ -86,6 +86,7 @@ private:
     void AppendEntry(std::vector<Entry>& entries) {
         assert(false);
     }
+    void HandleAppendEntries(const RaftMessage& msg);
     void BroadCast() {
         assert(false);
     }

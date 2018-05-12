@@ -150,10 +150,14 @@ bool RaftStateMachine::StepCandidate(const RaftMessage& msg) {
     case MsgPropose:
         return false;
     case MsgAppend:
+        BecomeFollower(msg.term(), msg.from());
+        break;
     case MsgHeartbeat:
+        BecomeFollower(msg.term(), msg.from());
+        break;
     case MsgSnapshot:
         BecomeFollower(msg.term(), msg.from());
-        assert(false);
+        break;
         // todo: handle msg
         break;
     case MsgRequestPreVoteResponse:
@@ -215,5 +219,29 @@ void RaftStateMachine::BecomePreCandidate() {
 bool RaftStateMachine::GetSendMessages(std::vector<RaftMessage>& to_send_msgs) {
     to_send_msgs.swap(_to_send_msgs);
 }
+
+void RaftStateMachine::HandleAppendEntries(const RaftMessage& msg) {
+    // local message is more fresh, do not change
+    RaftMessage* to_send = CreateRaftMessage(MsgAppendResponse, 0, msg.from());
+    if (msg.get_index() < _log->GetCommitted()) {
+        to_send->set_index(_log->GetCommitted());
+        Send(to_send);
+        return;
+    }
+    int64_t last_index = _log->MaybeAppend(msg->index(), msg->log_term(),
+            msg->commit(), msg->entries());
+    if (~last_index) {
+        to_send->set_index(last_index);
+    } else {
+        // reject message
+        to_send->set_index(msg->index());
+        to_send->set_reject(true);
+        to_send->set_reject_hint(_log->GetLastIndex());
+    }
+    Send(to_send);
+    
+}
+
+
 
 };
