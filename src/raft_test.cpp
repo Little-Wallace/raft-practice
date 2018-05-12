@@ -16,18 +16,52 @@ using namespace std;
 class MockRaftLog : public RaftLog
 {
 public:
-    uint64_t GetLastIndex() const override {
+    int64_t GetLastIndex() const override {
         return 1;
     }
-    uint64_t GetLastTerm() const override {
+    int64_t GetLastTerm() const override {
         return 1;
     }
-    uint64_t GetCommitted() const override {
+    int64_t GetCommitted() const override {
         return 1;
     }
-    vector<Raft::Entry> Entries(uint64_t idx, uint64_t max_size) override {
-        vector<Raft::Entry> ents;
-        return ents;
+    int64_t GetTerm(int64_t idx) const override {
+        return 1;
+    }
+    int64_t GetFirstIndex() const override {
+        return 1;
+    }
+    int64_t GetApplied() const override {
+        return 1;
+    }
+    bool MatchTerm(int64_t idx, int64_t term) const override {
+        return false;
+    }
+
+    void CommitTo(int64_t index) override {
+    }
+    void ApplyTo(int64_t index) override {
+    }
+    void StableTo(int64_t index) override {
+    }
+    int64_t FindConflict() override {
+        return 1;
+    }
+    google::protobuf::RepeatedField<Entry> GetEntries(uint64_t idx, uint64_t max_size) const override {
+        return google::protobuf::RepeatedField<Entry> ();
+    }
+    google::protobuf::RepeatedField<Entry> GetEntries() override {
+        return google::protobuf::RepeatedField<Entry> ();
+    }
+    bool MaybeCommit(uint16_t idx, uint16_t term) override {
+        return false;
+    }
+    int64_t MaybeAppend(uint16_t idx, uint16_t term, uint64_t commited,
+                                const google::protobuf::RepeatedPtrField<Entry>& ents) const override {
+        return 1;
+    }
+    int64_t Append(const google::protobuf::RepeatedPtrField<Entry>& ents) const override {
+        return 1;
     }
 
 };
@@ -35,11 +69,11 @@ public:
 class RaftTest : public testing::Test
 {
 public:
-    virtual void SetUp()
+    void SetUp()
     {
         cerr << "==========Begin Test!================" << endl;
     }
-    virtual void TearDown()
+    void TearDown()
     {
         cerr << "==========End Test!==================" << endl;
     }
@@ -79,7 +113,13 @@ TEST_F(RaftTest, TestLaunchCampaignFail)
         raft.Step(*msg);
     }
     ASSERT_EQ(RaftStateMachine::Candidate, raft._state);
-    
+    for (size_t i = 2; i <= 3; i ++) {
+        msg->set_msg_type(MsgRequestVoteResponse);
+        msg->set_from(i);
+        msg->set_reject(false);
+        raft.Step(*msg);
+    }
+    ASSERT_EQ(RaftStateMachine::Leader, raft._state);
 }
 
 

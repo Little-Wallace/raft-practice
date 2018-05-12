@@ -43,7 +43,7 @@ void RaftStateMachine::Send(RaftMessage& msg) {
     _to_send_msgs.push_back(msg);
 }
 
-bool RaftStateMachine::Step(const RaftMessage& msg) {
+bool RaftStateMachine::Step(RaftMessage& msg) {
     MessageType msg_type = msg.msg_type();
     if (msg.term() == 0) {
         // local message
@@ -137,111 +137,55 @@ void RaftStateMachine::LaunchVote(MessageType type) {
 void RaftStateMachine::DoVote(const RaftMessage& msg) {
     assert(false);
 }
-void RaftStateMachine::StepLeader(const RaftMessage& msg) {
-    assert(false);
-}
+
 void RaftStateMachine::StepFollower(const RaftMessage& msg) {
     assert(false);
-}
-
-bool RaftStateMachine::StepCandidate(const RaftMessage& msg) {
-    cout << "step candidate: " << msg.msg_type() << " " << MsgRequestPreVoteResponse << endl; 
-    switch (msg.msg_type()) {
-    case MsgPropose:
-        return false;
-    case MsgAppend:
-        BecomeFollower(msg.term(), msg.from());
-        break;
-    case MsgHeartbeat:
-        BecomeFollower(msg.term(), msg.from());
-        break;
-    case MsgSnapshot:
-        BecomeFollower(msg.term(), msg.from());
-        break;
-        // todo: handle msg
-        break;
-    case MsgRequestPreVoteResponse:
-    case MsgRequestVoteResponse:
-        cout << "step " << _state << ": " << PreCandidate << endl;
-        if ((MsgRequestPreVoteResponse == msg.msg_type() && PreCandidate != _state)
-            || (MsgRequestVoteResponse == msg.msg_type() && Candidate != _state))
-            return true;
-        {
-            size_t sz = Poll(msg.from(), msg.msg_type(), !msg.reject());
-            if (Quorum() == sz) {
-                // win the campaign, become leader immediately
-                if (PreCandidate == _state) {
-                    DoCompaign();
-                } else{
-                    BecomeLeader();
-                    BroadCast();
-                }
-            } else if (_votes.size() == sz + Quorum()) {
-                // lose the campaign, wait someone to be leader.
-                BecomeFollower(_term, INVALID_ID);
-            }
-        }
-        break;
-        case MsgTimeoutNow:
-            cerr << "debug time out now, id " << _id << " term: " << _term << " state: " << _state << endl;
-            break;
-        default:
-            assert(false);
-            break;
-    }
-    return true;
-}
-
-void RaftStateMachine::BecomeFollower(uint64_t term, uint64_t id) {
-    Reset(term);
-    _leader_id = id;
-    _state = Follower; 
-}
-
-void RaftStateMachine::BecomeCandidate() {
-    Reset(_term + 1);
-    _vote = _id;
-    _state = Candidate;
-}
-void RaftStateMachine::BecomeLeader() {
-    Reset(_term);
-    _leader_id = _id;
-    auto ents = _log->Entries(_log->GetCommitted() + 1, RaftLog::NO_LIMIT);
-    // todo: change conf
-    _state = Leader;
-    vector<Entry> vec;
-    AppendEntry(vec);
-}
-void RaftStateMachine::BecomePreCandidate() {
-    _state = PreCandidate;
 }
 
 bool RaftStateMachine::GetSendMessages(std::vector<RaftMessage>& to_send_msgs) {
     to_send_msgs.swap(_to_send_msgs);
 }
 
+void RaftStateMachine::BecomeFollower(uint64_t term, uint64_t id) {
+    Reset(term);
+    _leader_id = id;
+    _state = Follower;
+}
+
 void RaftStateMachine::HandleAppendEntries(const RaftMessage& msg) {
     // local message is more fresh, do not change
     RaftMessage* to_send = CreateRaftMessage(MsgAppendResponse, 0, msg.from());
-    if (msg.get_index() < _log->GetCommitted()) {
+    if (msg.index() < _log->GetCommitted()) {
         to_send->set_index(_log->GetCommitted());
-        Send(to_send);
+        Send(*to_send);
         return;
     }
-    int64_t last_index = _log->MaybeAppend(msg->index(), msg->log_term(),
-            msg->commit(), msg->entries());
+
+    int64_t last_index = _log->MaybeAppend(msg.index(), msg.log_term(),
+            msg.commit(), msg.entries());
     if (~last_index) {
         to_send->set_index(last_index);
     } else {
         // reject message
-        to_send->set_index(msg->index());
+        to_send->set_index(msg.index());
         to_send->set_reject(true);
         to_send->set_reject_hint(_log->GetLastIndex());
     }
-    Send(to_send);
+    Send(*to_send);
     
 }
 
+void RaftStateMachine::HandleHeartBeat(RaftMessage& msg) {
+    _log->CommitTo(msg.commit());
+    RaftMessage* m = CreateRaftMessage(MsgHeartbeatResponse, 0, msg.from());
+    m->set_allocated_context(msg.release_context());
+    Send(*m);
+}
 
+void RaftStateMachine::HandleSnapshot(RaftMessage& msg) {
+    // todo: move region data
+    assert(false);
+
+}
 
 };

@@ -13,6 +13,6 @@ RaftNode::RaftNode(size_t id_, const std::string& address_)
 
 bool RaftNode::Init()
 {
-    return _client.Init(_address);
+    return false;
 }
 

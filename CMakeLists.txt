@@ -20,6 +20,8 @@ set(SOURCES
         src/raft_node.cpp
         src/node_client.cpp src/util/string_util.cpp
         src/service_keeper.cpp src/raft_state_machine.cpp
+        src/raft_state_machine_candidate.cpp
+        src/raft_state_machine_leader.cpp
         src/node_server_service_impl.cpp
         proto/message.grpc.pb.cc proto/message.pb.cc)
 add_library(raft STATIC ${SOURCES})

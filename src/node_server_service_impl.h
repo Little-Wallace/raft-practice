@@ -30,7 +30,10 @@ public:
     ::grpc::Status Raft(::grpc::ServerContext* context,
                         const ::Raft::RaftMessage* request, ::Raft::Done* response) override
     {
-        assert(false);
+        //google::protobuf::ArenaOptions options;
+        while (!_receiveQueue->Push(*request)) {
+            usleep(1000);
+        }
         return grpc::Status::OK;
     }
     ::grpc::Status Get(::grpc::ServerContext* context,
@@ -48,7 +51,8 @@ public:
 
 private:
     Raft::RaftStateMachine* _raft;
-    RaftMessageQueue* _receiveQueue;
+    RaftMessageQueue* _receiveQueue;   // todo: use message pointer rather than message object in queue
+    google::protobuf::Arena _arena;   // todo: use arena to allocate memory for raftmessage
 };
 
 #endif //RAFT_NODE_SERVER_H

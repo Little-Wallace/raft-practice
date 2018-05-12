@@ -38,7 +38,7 @@ public:
                      const std::vector<RaftNode*>& nodes);
     
     ~RaftStateMachine();
-    bool Step(const ::Raft::RaftMessage& msg);
+    bool Step(::Raft::RaftMessage& msg);
     void Reset(uint64_t term);
     void ResetRandomizedElectionTimeout() {
         static std::default_random_engine rd;
@@ -76,17 +76,27 @@ private:
     uint32_t Quorum();
     void DoCompaign();
     void DoVote(const RaftMessage& msg);
-    void StepLeader(const RaftMessage& msg);
+    bool StepLeader(RaftMessage& msg);
     void StepFollower(const RaftMessage& msg);
-    bool StepCandidate(const RaftMessage& msg);
+    bool StepCandidate(RaftMessage& msg);
     void BecomeCandidate();
     void BecomeLeader();
     void BecomePreCandidate();
     void LaunchVote(MessageType type);
-    void AppendEntry(std::vector<Entry>& entries) {
+    void AppendEntry(google::protobuf::RepeatedPtrField<Entry>& entries) {
         assert(false);
     }
+    RaftNode* GetRaftNode(int64_t nodeId) {
+        assert(false);
+        return NULL;
+    }
     void HandleAppendEntries(const RaftMessage& msg);
+    void HandleHeartBeat(RaftMessage& msg);
+    void HandleHeartBeatResponse(RaftMessage& msg);
+    void HandleSnapshot(RaftMessage& msg);
+    void HandleTransferLeader(RaftMessage& msg);
+    void HandleSnapStatus(RaftMessage& msg) { assert(false); }
+    void HandleAppendResponse(RaftMessage& msg) { assert(false); }
     void BroadCast() {
         assert(false);
     }

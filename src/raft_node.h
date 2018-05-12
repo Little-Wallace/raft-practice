@@ -10,16 +10,41 @@
 
 class RaftNode {
 public:
+    enum RaftNodeStatus {
+        Probe,
+        Replicate,
+        Snapshot
+    };
+public:
     RaftNode(size_t id_, const std::string& address);
     ~RaftNode() {}
     bool Init();
-    uint64_t GetId() {
+    bool IsFull() const {
+        assert(false);
+        return false;
+    };
+    uint64_t GetId() const {
         return (uint64_t)_id;
+    }
+    RaftNodeStatus GetState() const {
+        return _state;
+    }
+    int64_t GetMatched() const {
+        return _matched;
+    }
+    void Resume() {
+        assert(false);
+    }
+    bool SetRecentActive(bool active) {
+        _recent_active = active;
     }
 private:
     size_t _id;
+    int64_t _matched;
+    RaftNodeStatus _state;
+    bool _recent_active;
     std::string _address;
-    NodeClient _client;
+
 };
 
 
