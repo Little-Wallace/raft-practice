@@ -12,11 +12,13 @@ bool RaftStateMachine::StepLeader(RaftMessage& msg) {
     MessageType type = msg.msg_type();
     switch (type) {
         case MsgBeat:
-            assert(false);
+            BroadCastHeartBeat();
             //todo: broadcast heartbeat to follower
             break;
         case MsgCheckQuorum:
-            assert(false);
+            if (!CheckQuorum()) {
+                BecomeFollower(0, INVALID_ID);
+            }
             break;
         case MsgPropose:
             assert(false);
@@ -46,9 +48,29 @@ bool RaftStateMachine::StepLeader(RaftMessage& msg) {
     }
 }
 
-void RaftStateMachine::AppendEntry(RepeatedPtrField<Entry>& entries) {
-
+// if more than one half node receive leader last message, commit it into log
+bool RaftStateMachine::MaybeCommit() {
+    int64_t matches[_nodes.size()];
+    int idx = 0;
+    for (auto ite: _nodes) {
+       matches[idx ++] = ite.second->GetMatched();
+    }
+    sort(matches, matches + _nodes.size());
+    return _log->MaybeCommit(matches[Quorum() - 1], _term);
 }
+
+void RaftStateMachine::AppendEntry(RepeatedPtrField<Entry>& entries) {
+    int64_t sz = entries.size();
+    int64_t idx = _log->GetLastIndex();
+    for (size_t i = 0; i < sz; i ++) {
+        entries[i].set_term(_term);
+        entries[i].set_index(idx + i + 1);
+    }
+    idx = _log->Append(entries);
+    GetRaftNode(_id)->MaybeUpdate(idx);
+    MaybeCommit();
+}
+
 void RaftStateMachine::BecomeLeader() {
     Reset(_term);
     _leader_id = _id;
@@ -66,13 +88,16 @@ void RaftStateMachine::HandleHeartBeatResponse(RaftMessage& msg) {
     if (node->GetState() == RaftNode::Replicate && node->IsFull()) {
         // why free?
         //todo: node->FreeFirstOne();
+        assert(false);
     }
     if (node->GetMatched() < _log->GetLastIndex()) {
         // todo: send append
+        assert(false);
     }
     if (msg.context().empty()) {
         return;
     }
+    assert(false);
     /* if (_read_only->recv_ack(msg) < Quorum()) {
         return;
     } */
@@ -82,6 +107,25 @@ void RaftStateMachine::HandleHeartBeatResponse(RaftMessage& msg) {
 }
 void RaftStateMachine::HandleTransferLeader(RaftMessage& msg) {
 
+}
+
+void RaftStateMachine::BroadCastHeartBeat() {
+    assert(false);
+}
+
+bool RaftStateMachine::CheckQuorum() {
+    size_t act = 0;
+    for (auto node: _nodes) {
+        if (node.second->GetId() == _id) {
+            act += 1;
+            continue;
+        }
+        if(node.second->GetRecentActive()) {
+            act += 1;
+        }
+        node.second->SetRecentActive(false);
+    }
+    return act >= Quorum();
 }
 
 };

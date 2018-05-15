@@ -24,7 +24,7 @@ public:
     virtual void ApplyTo(int64_t index) = 0;
     virtual void StableTo(int64_t index) = 0;
     virtual int64_t FindConflict() = 0;
-    virtual google::protobuf::RepeatedField<Entry> GetEntries(uint64_t idx, uint64_t max_size) const = 0;
+    virtual google::protobuf::RepeatedField<Entry> GetEntries(int64_t idx, uint64_t max_size) const = 0;
     virtual google::protobuf::RepeatedField<Entry> GetEntries() = 0;
     virtual bool MaybeCommit(uint16_t idx, uint16_t term) = 0;
     virtual int64_t MaybeAppend(uint16_t idx, uint16_t term, uint64_t commited,

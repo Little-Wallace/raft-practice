@@ -32,11 +32,18 @@ public:
     int64_t GetMatched() const {
         return _matched;
     }
+    bool GetRecentActive() {
+        return _recent_active;
+    }
+
     void Resume() {
         assert(false);
     }
-    bool SetRecentActive(bool active) {
+    void SetRecentActive(bool active) {
         _recent_active = active;
+    }
+    void MaybeUpdate(int64_t idx) {
+        assert(false);
     }
 private:
     size_t _id;

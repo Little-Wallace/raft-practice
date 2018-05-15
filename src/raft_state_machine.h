@@ -11,17 +11,6 @@
 #include "common.h"
 
 namespace Raft{
-// RaftMessage NewRaftMessage(MessageType msg_type,
-//                            uint64_t to,
-//                            uint64_t from)
-// {
-//     RaftMessage msg;
-//     msg.set_msg_type(msg_type);
-//     msg.set_to(to);
-//     msg.set_from(from);
-//     msg.set_term(0);
-//     return msg;    
-// }
 
 class RaftStateMachine
 {
@@ -35,7 +24,7 @@ public:
     };
     RaftStateMachine(uint64_t id_,
                      RaftLog* log,
-                     const std::vector<RaftNode*>& nodes);
+                     const std::map<int64_t, RaftNode*>& nodes);
     
     ~RaftStateMachine();
     bool Step(::Raft::RaftMessage& msg);
@@ -49,11 +38,7 @@ public:
     void BecomeFollower(uint64_t term, uint64_t id);
     bool GetSendMessages(std::vector<RaftMessage>& to_send_msgs);
     uint32_t Poll(uint64_t id_, MessageType type, bool agree);
-    void Tick()
-    {
-        assert(false);
-    }
-
+    bool Tick();
     bool HasReady()
     {
         assert(false);
@@ -71,24 +56,25 @@ public:
         return msg;
     }
 private:
-    void Send(RaftMessage& msg);
-    void MaybeCompaign();
-    uint32_t Quorum();
-    void DoCompaign();
-    void DoVote(const RaftMessage& msg);
-    bool StepLeader(RaftMessage& msg);
-    void StepFollower(const RaftMessage& msg);
-    bool StepCandidate(RaftMessage& msg);
+    void AppendEntry(google::protobuf::RepeatedPtrField<Entry>& entries);
     void BecomeCandidate();
     void BecomeLeader();
     void BecomePreCandidate();
-    void LaunchVote(MessageType type);
-    void AppendEntry(google::protobuf::RepeatedPtrField<Entry>& entries) {
+    void BroadCast() {
         assert(false);
     }
+    void BroadCastHeartBeat();
+    bool CheckQuorum();
+    void DoCampaign();
+    void MaybeCampaign();
+    bool MaybeCommit();
+    void DoVote(const RaftMessage& msg);
+
+    void LaunchVote(MessageType type);
     RaftNode* GetRaftNode(int64_t nodeId) {
-        assert(false);
-        return NULL;
+        RaftNode* node = _nodes[nodeId];
+        assert(node->GetId() == nodeId);
+        return node;
     }
     void HandleAppendEntries(const RaftMessage& msg);
     void HandleHeartBeat(RaftMessage& msg);
@@ -97,12 +83,19 @@ private:
     void HandleTransferLeader(RaftMessage& msg);
     void HandleSnapStatus(RaftMessage& msg) { assert(false); }
     void HandleAppendResponse(RaftMessage& msg) { assert(false); }
-    void BroadCast() {
-        assert(false);
-    }
+
+    uint32_t Quorum();
+
+    void Send(RaftMessage& msg);
+    bool StepLeader(RaftMessage& msg);
+    void StepFollower(const RaftMessage& msg);
+    bool StepCandidate(RaftMessage& msg);
+    bool TickElection();
+    bool TickHeartBeat();
 private :
     uint64_t _id;
     uint64_t _leader_id;
+    uint64_t _leader_transferee;
     uint64_t _vote;
     uint64_t _term;
     uint64_t _election_elapsed;
@@ -112,11 +105,11 @@ private :
     uint64_t _randomized_election_timeout;
     RoleState _state;
     RaftLog* _log;
-    std::vector<RaftNode*> _nodes;
+    std::map<int64_t, RaftNode*> _nodes;
     std::map<uint64_t, bool> _votes;
     std::vector<RaftMessage> _to_send_msgs;
-    // todo: use allocator to avoid allocate memory for messages frequently
-    // Allocator<RaftMessage> _allocator;
+    // todo: use allocator to avoid allocate memory of message frequently
+    // google::protobuf::Arena* _arena;
     friend class RaftTest_TestCampaign_Test;
 };
 
@@ -144,6 +137,7 @@ inline void RaftStateMachine::Reset(uint64_t term) {
     ResetRandomizedElectionTimeout();
     _election_elapsed = 0;
     _heartbeat_elapsed = 0;
+    _leader_transferee = 0; // todo: ?????
     _votes.clear();
     // reset nodes
 }

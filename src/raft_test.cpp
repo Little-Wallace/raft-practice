@@ -47,7 +47,7 @@ public:
     int64_t FindConflict() override {
         return 1;
     }
-    google::protobuf::RepeatedField<Entry> GetEntries(uint64_t idx, uint64_t max_size) const override {
+    google::protobuf::RepeatedField<Entry> GetEntries(int64_t idx, uint64_t max_size) const override {
         return google::protobuf::RepeatedField<Entry> ();
     }
     google::protobuf::RepeatedField<Entry> GetEntries() override {
@@ -78,10 +78,10 @@ public:
         cerr << "==========End Test!==================" << endl;
     }
 protected:
-    vector<RaftNode*> CreateRaftNodes(size_t cluster_size = 3) {
-        vector<RaftNode*> nodes;
-        for (size_t i = 0; i < cluster_size; i ++) {
-            nodes.push_back(new RaftNode(i + 1, ""));
+    map<int64_t, RaftNode*> CreateRaftNodes(size_t cluster_size = 3) {
+        map<int64_t, RaftNode*> nodes;
+        for (int64_t i = 1; i <= cluster_size; i ++) {
+            nodes[i] = new RaftNode(i, "");
         }
         return nodes;
     }
@@ -94,7 +94,6 @@ TEST_F(RaftTest, TestLaunchCampaignFail)
     auto nodes = CreateRaftNodes();
     RaftStateMachine raft(1, new MockRaftLog, nodes);
     raft.BecomeFollower(0, 0);
-    cout << "befor step" << endl;
     RaftMessage* msg = RaftStateMachine::CreateRaftMessage(MsgHup, 0, 1);
     cout << "befor step" << endl;
     raft.Step(*msg);
@@ -113,6 +112,7 @@ TEST_F(RaftTest, TestLaunchCampaignFail)
         raft.Step(*msg);
     }
     ASSERT_EQ(RaftStateMachine::Candidate, raft._state);
+    cout << "end pre vote" << endl;
     for (size_t i = 2; i <= 3; i ++) {
         msg->set_msg_type(MsgRequestVoteResponse);
         msg->set_from(i);

@@ -23,7 +23,7 @@ set(SOURCES
         src/raft_state_machine_candidate.cpp
         src/raft_state_machine_leader.cpp
         src/node_server_service_impl.cpp
-        proto/message.grpc.pb.cc proto/message.pb.cc)
+        proto/message.grpc.pb.cc proto/message.pb.cc src/raft_state_machine_tick.cpp)
 add_library(raft STATIC ${SOURCES})
 # add_library(raft SHARED ${SOURCES})
 INCLUDE_DIRECTORIES(./src)

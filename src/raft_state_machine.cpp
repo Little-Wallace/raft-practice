@@ -6,9 +6,10 @@ namespace Raft{
 
 RaftStateMachine::RaftStateMachine(uint64_t id_,
                                    RaftLog* log,
-                                   const std::vector<RaftNode*>& nodes)
+                                   const std::map<int64_t, RaftNode*>& nodes)
     : _id(id_)
     , _leader_id(0)
+    , _leader_transferee(0)
     , _vote(0)
     , _term(0)
     , _election_elapsed(0)
@@ -79,8 +80,8 @@ bool RaftStateMachine::Step(RaftMessage& msg) {
     }
     switch (msg_type) {
     case MsgHup:
-        // regular tick to drive raft
-        MaybeCompaign();
+        // campaign
+        MaybeCampaign();
         break;
     case MsgRequestPreVote:
     case MsgRequestVote:
@@ -102,32 +103,12 @@ bool RaftStateMachine::Step(RaftMessage& msg) {
     return true;
 }
 
-void RaftStateMachine::DoCompaign() {
-    // todo: judge if there is a entry of config change
-    BecomeCandidate();
-    if (Quorum() == Poll(_id, MsgRequestVote, true)) {
-        BecomeLeader();
-        return;
-    }
-    LaunchVote(MsgRequestVote);
-}
-
-void RaftStateMachine::MaybeCompaign() {
-    // todo: judge if there is a entry of config change
-    BecomePreCandidate();
-    if (Quorum() == Poll(_id, MsgRequestPreVote, true)) {
-        DoCompaign();
-        return;
-    }
-    LaunchVote(MsgRequestPreVote);
-}
 
 void RaftStateMachine::LaunchVote(MessageType type) {
     uint64_t term = (type == MsgRequestPreVote ? (1 + _term) : _term);
-    for (size_t i = 0; i < _nodes.size(); i ++)
-    {
-        if (_nodes[i]->GetId() == _id) continue;
-        auto m = CreateRaftMessage(type, term, _nodes[i]->GetId());
+    for (auto ite: _nodes) {
+        if (ite.second->GetId() == _id) continue;
+        auto m = CreateRaftMessage(type, term, ite.second->GetId());
         m->set_index(_log->GetLastIndex());
         m->set_log_term(_log->GetLastTerm());
         Send(*m);

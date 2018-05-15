@@ -24,7 +24,6 @@ bool RaftStateMachine::StepCandidate(RaftMessage& msg) {
             BecomeFollower(msg.term(), msg.from());
             HandleSnapshot(msg);
             break;
-            // todo: handle msg
         case MsgRequestPreVoteResponse:
         case MsgRequestVoteResponse:
         cout << "step " << _state << ": " << PreCandidate << endl;
@@ -36,7 +35,7 @@ bool RaftStateMachine::StepCandidate(RaftMessage& msg) {
             if (Quorum() == sz) {
                 // win the campaign, become leader immediately
                 if (PreCandidate == _state) {
-                    DoCompaign();
+                    DoCampaign();
                 } else{
                     BecomeLeader();
                     BroadCast();
@@ -55,6 +54,28 @@ bool RaftStateMachine::StepCandidate(RaftMessage& msg) {
             break;
     }
     return true;
+}
+
+void RaftStateMachine::DoCampaign() {
+    // todo: judge if there is a entry of config change
+    cout << "begin campagin" << endl;
+    BecomeCandidate();
+    if (Quorum() == Poll(_id, MsgRequestVote, true)) {
+        BecomeLeader();
+        return;
+    }
+    LaunchVote(MsgRequestVote);
+}
+
+void RaftStateMachine::MaybeCampaign() {
+    // todo: judge if there is a entry of config change
+    cout << "begin pre campagin" << endl;
+    BecomePreCandidate();
+    if (Quorum() == Poll(_id, MsgRequestPreVote, true)) {
+        DoCampaign();
+        return;
+    }
+    LaunchVote(MsgRequestPreVote);
 }
 
 void RaftStateMachine::BecomeCandidate() {
