@@ -74,7 +74,7 @@ void RaftStateMachine::AppendEntry(RepeatedPtrField<Entry>& entries) {
 void RaftStateMachine::BecomeLeader() {
     Reset(_term);
     _leader_id = _id;
-    auto ents = _log->GetEntries(_log->GetCommitted() + 1, RaftLog::NO_LIMIT);
+    // auto ents = _log->GetEntries(_log->GetCommitted() + 1, RaftLog::NO_LIMIT);
     // todo: change conf
     _state = Leader;
     RepeatedPtrField<Entry> vec;
@@ -106,7 +106,25 @@ void RaftStateMachine::HandleHeartBeatResponse(RaftMessage& msg) {
 
 }
 void RaftStateMachine::HandleTransferLeader(RaftMessage& msg) {
+    // ???
+    assert(false);
+}
 
+void RaftStateMachine::SendAppend(RaftNode* node) {
+    if (node->IsPaused()) {
+        return;
+    }
+    //int64_t term = _log->GetTerm();
+    assert(false);
+}
+
+// tell every node 
+void RaftStateMachine::BroadCast() {
+    for (auto ite: _nodes) {
+        if (ite.first == _id) continue;
+        RaftNode* node = ite.second;
+        SendAppend(node);
+    }
 }
 
 void RaftStateMachine::BroadCastHeartBeat() {

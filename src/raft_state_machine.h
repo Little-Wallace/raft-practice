@@ -36,7 +36,7 @@ public:
         _randomized_election_timeout = timeout;
     }
     void BecomeFollower(uint64_t term, uint64_t id);
-    bool GetSendMessages(std::vector<RaftMessage>& to_send_msgs);
+    bool GetSendMessages(std::vector<RaftMessage*>& to_send_msgs);
     uint32_t Poll(uint64_t id_, MessageType type, bool agree);
     bool Tick();
     bool HasReady()
@@ -60,9 +60,7 @@ private:
     void BecomeCandidate();
     void BecomeLeader();
     void BecomePreCandidate();
-    void BroadCast() {
-        assert(false);
-    }
+    void BroadCast();
     void BroadCastHeartBeat();
     bool CheckQuorum();
     void DoCampaign();
@@ -82,11 +80,12 @@ private:
     void HandleSnapshot(RaftMessage& msg);
     void HandleTransferLeader(RaftMessage& msg);
     void HandleSnapStatus(RaftMessage& msg) { assert(false); }
-    void HandleAppendResponse(RaftMessage& msg) { assert(false); }
+    void HandleAppendResponse(RaftMessage& msg);
 
     uint32_t Quorum();
 
-    void Send(RaftMessage& msg);
+    void Send(RaftMessage* msg);
+    void SendAppend(RaftNode* node);
     bool StepLeader(RaftMessage& msg);
     void StepFollower(const RaftMessage& msg);
     bool StepCandidate(RaftMessage& msg);
@@ -107,7 +106,7 @@ private :
     RaftLog* _log;
     std::map<int64_t, RaftNode*> _nodes;
     std::map<uint64_t, bool> _votes;
-    std::vector<RaftMessage> _to_send_msgs;
+    std::vector<RaftMessage*> _to_send_msgs;
     // todo: use allocator to avoid allocate memory of message frequently
     // google::protobuf::Arena* _arena;
     friend class RaftTest_TestCampaign_Test;

@@ -24,21 +24,21 @@ RaftStateMachine::~RaftStateMachine() {
 }
 
 
-void RaftStateMachine::Send(RaftMessage& msg) {
-    msg.set_from(_id);
-    auto type = msg.msg_type();
+void RaftStateMachine::Send(RaftMessage* msg) {
+    msg->set_from(_id);
+    auto type = msg->msg_type();
     if (MsgRequestVote == type ||
         MsgRequestPreVote == type ||
         MsgRequestVoteResponse == type ||
         MsgRequestPreVoteResponse == type) {
         // term_id must be set to decide which node should win the campaign
-        assert(msg.term());
+        assert(msg->term());
     } else {
-        assert(0 == msg.term());
+        assert(0 == msg->term());
         // follower ask for following leader.
         if (MsgPropose != type ||
             MsgReadIndex != type) {
-            msg.set_term(_term);
+            msg->set_term(_term);
         }
     }
     _to_send_msgs.push_back(msg);
@@ -74,7 +74,7 @@ bool RaftStateMachine::Step(RaftMessage& msg) {
         // receive msg from a obsolete leader.
         if (MsgHeartbeat == msg_type || MsgAppend == msg_type) {
             RaftMessage* msg = CreateRaftMessage(MsgAppendResponse, 0, 0);
-            Send(*msg);
+            Send(msg);
         }
         assert(false);
     }
@@ -111,7 +111,7 @@ void RaftStateMachine::LaunchVote(MessageType type) {
         auto m = CreateRaftMessage(type, term, ite.second->GetId());
         m->set_index(_log->GetLastIndex());
         m->set_log_term(_log->GetLastTerm());
-        Send(*m);
+        Send(m);
     }
 }
 
@@ -123,7 +123,7 @@ void RaftStateMachine::StepFollower(const RaftMessage& msg) {
     assert(false);
 }
 
-bool RaftStateMachine::GetSendMessages(std::vector<RaftMessage>& to_send_msgs) {
+bool RaftStateMachine::GetSendMessages(std::vector<RaftMessage*>& to_send_msgs) {
     to_send_msgs.swap(_to_send_msgs);
 }
 
@@ -138,7 +138,7 @@ void RaftStateMachine::HandleAppendEntries(const RaftMessage& msg) {
     RaftMessage* to_send = CreateRaftMessage(MsgAppendResponse, 0, msg.from());
     if (msg.index() < _log->GetCommitted()) {
         to_send->set_index(_log->GetCommitted());
-        Send(*to_send);
+        Send(to_send);
         return;
     }
 
@@ -152,15 +152,14 @@ void RaftStateMachine::HandleAppendEntries(const RaftMessage& msg) {
         to_send->set_reject(true);
         to_send->set_reject_hint(_log->GetLastIndex());
     }
-    Send(*to_send);
-    
+    Send(to_send);
 }
 
 void RaftStateMachine::HandleHeartBeat(RaftMessage& msg) {
     _log->CommitTo(msg.commit());
     RaftMessage* m = CreateRaftMessage(MsgHeartbeatResponse, 0, msg.from());
     m->set_allocated_context(msg.release_context());
-    Send(*m);
+    Send(m);
 }
 
 void RaftStateMachine::HandleSnapshot(RaftMessage& msg) {

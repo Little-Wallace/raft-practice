@@ -32,12 +32,18 @@ public:
     int64_t GetMatched() const {
         return _matched;
     }
+    bool IsPaused() const {
+        assert(false);
+        return false;
+    }
     bool GetRecentActive() {
         return _recent_active;
     }
-
+    void Pause() {
+        _paused = true;
+    }
     void Resume() {
-        assert(false);
+        _paused = false;
     }
     void SetRecentActive(bool active) {
         _recent_active = active;
@@ -50,6 +56,7 @@ private:
     int64_t _matched;
     RaftNodeStatus _state;
     bool _recent_active;
+    bool _paused;
     std::string _address;
 
 };

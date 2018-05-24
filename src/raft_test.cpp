@@ -100,7 +100,7 @@ TEST_F(RaftTest, TestLaunchCampaignFail)
     cout << "end step" << endl;
     ASSERT_EQ(RaftStateMachine::PreCandidate, raft._state);
     ASSERT_EQ(2, raft._to_send_msgs.size());
-    vector<RaftMessage> msgs;
+    vector<RaftMessage*> msgs;
     raft.GetSendMessages(msgs);
     ASSERT_EQ(0, raft._to_send_msgs.size());
     ASSERT_EQ(2, raft.Quorum());

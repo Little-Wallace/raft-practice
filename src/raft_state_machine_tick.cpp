@@ -24,10 +24,9 @@ bool RaftStateMachine::TickElection() {
         return false;
     }
     _election_elapsed = 0;
-    RaftMessage* msg = CreateRaftMessage(MsgHup, 0, INVALID_ID);
+    unique_ptr<RaftMessage> msg(CreateRaftMessage(MsgHup, 0, INVALID_ID));
     msg->set_from(_id);
     Step(*msg);
-    delete msg;
     return true;
 }
 
@@ -37,7 +36,7 @@ bool RaftStateMachine::TickHeartBeat() {
     bool has_ready = false;
     if (_election_elapsed >= _election_timeout) {
         _election_elapsed = 0;
-        RaftMessage* msg = CreateRaftMessage(MsgCheckQuorum, 0, INVALID_ID);
+        unique_ptr<RaftMessage> msg(CreateRaftMessage(MsgCheckQuorum, 0, INVALID_ID));
         msg->set_from(_id);
         Step(*msg);
         delete msg;
@@ -49,14 +48,12 @@ bool RaftStateMachine::TickHeartBeat() {
     if (Leader != _state) {
         return has_ready;
     }
-    // why he is stil leader?
     if (_heartbeat_elapsed >= _heartbeat_timeout) {
         _heartbeat_elapsed = 0;
         has_ready = true;
-        RaftMessage* msg = CreateRaftMessage(MsgBeat, 0, INVALID_ID);
+        unique_ptr<RaftMessage> msg(CreateRaftMessage(MsgBeat, 0, INVALID_ID));
         msg->set_from(_id);
         Step(*msg);
-        delete msg;
     }
     return has_ready;
 }
